@@ -11,6 +11,9 @@
 #include<typeinfo>
 #include<algorithm>
 #include<random>
+
+#include<boost/asio.hpp>
+
 #include"bencode.hpp"
 #include"sha.hpp"
 #include "util.hpp"
@@ -157,6 +160,9 @@ public:
 
     Transfer(Torrent torrent)
     :torrent_{torrent},
+    uploaded_{0},
+    downloaded_{0},
+    port_{6969},
     //peers_{},
     peer_id_{"TPP-"}
     {
@@ -169,20 +175,27 @@ public:
         }
     }
 
-    std::string announce(Event e=Event::none)
+    util::CurlRequest announce(Event e=Event::none)
     {
         util::CurlRequest req{};
         req.set_url(std::string{torrent_.announce()});
         req.set_param("peer_id"s, peer_id_);
         auto hash=torrent_.info_hash();
         req.set_param("info_hash"s, hash.begin(), hash.end());
+        req.set_param("port"s, port_);
+        req.set_param("uploaded"s, uploaded_);
+        req.set_param("downloaded"s, downloaded_);
+        req.set_param("compact"s, 1);
 
-        return req.build_url();
+        return req;
     }
 private:
-    //std::vector<Peer> peers_;
+    std::vector<boost::asio::ip::tcp::endpoint> peers_;
     Torrent torrent_;
     std::string peer_id_;
+    size_t uploaded_;
+    size_t downloaded_;
+    int port_;
 };
 /*
 class Client{
@@ -191,6 +204,52 @@ private:
     std::vector<Transfer> active;
 };
 */
+
+std::vector<boost::asio::ip::tcp::endpoint> parse_compact_peers(const std::string_view data)
+{
+    using namespace boost::asio::ip;
+    std::vector<tcp::endpoint> result{};
+    //process each record of 6 "characters"
+    for(int i=0; i<data.length(); i+=6)
+    {
+        std::array<uint8_t, 4> addr{data[i], data[i+1], data[i+2], data[i+3]};
+        uint16_t port=static_cast<uint16_t>((data[i+4]<<8)|data[i+5]);
+        result.push_back({make_address_v4(addr), port});
+    }
+    return result;
+}
+
+std::vector<boost::asio::ip::tcp::endpoint> parse_compact_peers6(const std::string_view data)
+{
+    using namespace boost::asio::ip;
+    std::vector<tcp::endpoint> result{};
+    //process each record of 18 "characters"
+    for(int i=0; i<data.length(); i+=18)
+    {
+        std::array<uint8_t, 16> addr{
+            data[i],
+            data[i+1],
+            data[i+2],
+            data[i+3],
+            data[i+4],
+            data[i+5],
+            data[i+6],
+            data[i+7],
+            data[i+8],
+            data[i+9],
+            data[i+10],
+            data[i+11],
+            data[i+12],
+            data[i+13],
+            data[i+14],
+            data[i+15]
+        };
+        uint16_t port=static_cast<uint16_t>((data[i+16]<<8)|data[i+17]);
+        result.push_back({make_address_v6(addr), port});
+    }
+    return result;
+}
+
 }
 
 #endif //BITTORRENT_HPP

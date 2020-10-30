@@ -11,6 +11,17 @@
 
 namespace util{
 
+class CurlResponse: public std::streambuf{
+public:
+    CurlResponse(std::vector<char> v)
+    :buf_{v}
+    {
+        setg(buf_.data(), buf_.data(), buf_.data()+buf_.size());
+    }
+private:
+    std::vector<char> buf_;
+};
+
 class CurlRequest{
 public:
     CurlRequest()
@@ -33,10 +44,11 @@ public:
             throw std::runtime_error("Error setting Curl callback");
     }
 
+    //Copy is forbidden but the class can be moved
     CurlRequest(const CurlRequest&)=delete;
-    CurlRequest(CurlRequest&&)=delete;
     CurlRequest& operator=(const CurlRequest&)=delete;
-    CurlRequest& operator=(CurlRequest&&)=delete;
+    CurlRequest(CurlRequest&&)=default;
+    CurlRequest& operator=(CurlRequest&&)=default;
 
     void set_url(std::string url)
     {
@@ -48,6 +60,13 @@ public:
         auto str=curl_easy_escape(handle_, value.c_str(), value.length());
         params_[name]=std::string{str};
         curl_free(str);
+    }
+
+    template<typename Integer>
+    void set_param(std::string name, const Integer& value)
+    {
+        static_assert(std::is_integral_v<Integer>);
+        params_[name]=std::to_string(value);
     }
 
     template<typename T>
@@ -68,9 +87,9 @@ public:
         curl_easy_perform(handle_);
     }
 
-    std::vector<char> response()
+    CurlResponse response()
     {
-        return response_;
+        return CurlResponse(response_);
     }
 
     ~CurlRequest()
@@ -93,6 +112,14 @@ public:
         }
 
         return r;
+    }
+
+    void print_response()
+    {
+        for(auto c: response_)
+            std::cout<<c;
+        
+        std::cout<<'\n';
     }
 private:
     static size_t callback(char* p, size_t size, size_t nmemb, void* userdata)
