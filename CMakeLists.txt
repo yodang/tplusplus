@@ -28,6 +28,7 @@ set(CURL_LIBRARY "-lcurl")
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
+find_package(Threads REQUIRED)
 
 add_executable(test_bencode src/test_bencode.cpp)
 target_include_directories(test_bencode PRIVATE include)
@@ -38,7 +39,7 @@ target_link_libraries(test_sha OpenSSL::Crypto)
 
 add_executable(test_torrent src/test_torrent.cpp)
 target_include_directories(test_torrent PRIVATE include)
-target_link_libraries(test_torrent OpenSSL::Crypto ${CURL_LIBRARIES})
+target_link_libraries(test_torrent OpenSSL::Crypto ${CURL_LIBRARIES} Threads::Threads)
 
 add_executable(test_http src/test_http.cpp)
 target_include_directories(test_http PRIVATE include)
