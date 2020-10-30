@@ -7,8 +7,8 @@ int main()
 
     req.set_url("https://www.google.com/");
     req.perform();
-    for(auto e:req.response())
-        std::cout<<e;
+    // for(auto e:req.response())
+    //     std::cout<<e;
     
     std::cout<<"\n";
 

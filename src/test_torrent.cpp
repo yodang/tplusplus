@@ -23,7 +23,19 @@ int main()
     Transfer dl{t};
 
     std::cout << "request\n";
-    std::cout << dl.announce()<< "\n";
+    auto req=dl.announce();
+    req.perform();
+    req.print_response();
+    auto response=req.response();
+    auto stream=std::istream{&response};
+    auto swarm=read(stream);
+    auto peers=parse_compact_peers(std::get<String>(std::get<Dictionnary>(swarm).entries["peers"]));
+    std::cout << std::setbase(10);
+    for(auto peer: peers)
+    {
+        std::cout << peer.address().to_string()<< " " <<peer.port()<< "\n";
+    }
+    std::cout << '\n';
 
     return 0;
 }
